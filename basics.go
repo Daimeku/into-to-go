@@ -113,3 +113,17 @@ func Pic(dx, dy int) [][]uint8 {
 
 
 
+//insertion sort - accepts a list of integers and returns a sorted list
+func insertionSort(inputList []int) []int {
+	// for each item in the list
+	for j:=1; j< len(inputList); j++ { // start the loop at the second item in the list
+		key := inputList[j] // set the key as the current item
+		i := j-1	//set i as the item before the current item
+		for (i>=0 && inputList[i] > key) { // once i is not a null index and the current item at list[i] is greater than the key
+			inputList[i+1] = inputList[i] // switch the values at these indexes
+			i = i-1
+		}
+		inputList[i+1] = key
+	}
+	return inputList
+}

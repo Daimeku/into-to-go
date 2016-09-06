@@ -1,0 +1,9 @@
+<html>
+	<body>
+		<form action = "/save/{{.Title}}" method = "POST">
+			<textArea name = "body">{{printf "%s" .Body}}</textArea>
+			<br>
+			<input type = "submit" value = "save">
+		</form>
+	</body>
+</html>
