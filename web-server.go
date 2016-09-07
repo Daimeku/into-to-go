@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func main() {
@@ -15,6 +16,7 @@ func main() {
 
 	http.HandleFunc("/view/", viewHandler)
 	http.HandleFunc("/edit/", editHandler)
+	http.HandleFunc("/save/", saveHandler)
 	http.HandleFunc("/error/", errorHandler)
 	http.ListenAndServe(":8080", nil)
 }
@@ -54,7 +56,7 @@ func viewHandler(writer http.ResponseWriter, request *http.Request) {
 		//fmt.Println("There was an error loading the page")
 		return
 	}
-	fmt.Fprintf(writer, "<h1>%s</h1><div>%s</div>", page.Title, page.Body)
+	renderTemplate(writer, "viewPageTemplate", page)
 }
 
 //handles all routes with /edit/- returns the edit template with the requested page details 
@@ -66,21 +68,52 @@ func editHandler(writer http.ResponseWriter, request *http.Request) {
 		fmt.Println("There was an error loading the page for editing - ", err)
 		return
 	}
-	pageTemplate,err := template.ParseFiles("editFormTemplate.html")
-	if err != nil {
-		fmt.Println("There was an error loading the edit template - ", err)
-		return
-	}
-	pageTemplate.Execute(writer, page)
+	renderTemplate(writer, "editFormTemplate", page)
 
 }
 
-//displays an error message for the user
+//handles POST to save pages
+func saveHandler(writer http.ResponseWriter, request *http.Request) {
+	// fmt.Fprintf(writer, (request.Form["title"]))
+	title := request.URL.Path[len("/save/"):]
+	err := request.ParseForm()
+	if err != nil {
+		redirectToError(writer, request)
+		return
+	}
+	fmt.Println(request.Form)
+	page, err := loadPage(title)
+	if err!=nil {
+		redirectToError(writer, request)
+		return
+	}
+	page.Title = strings.Join(request.Form["title"],"")
+	body := strings.Join(request.Form["body"],"")
+	page.Body = []byte(body)
+	page.Save()
+	
+	fmt.Println("file saved - ", page.Title)
+
+	//delete old file
+}
+
+//displays an error message for the user - handles all routes with /error/
 func errorHandler(writer http.ResponseWriter, request *http.Request){
 	//displays an error message for the user
 	fmt.Fprintf(writer, "There has been an error")
 }
 
+//redirects the user to the error page
 func redirectToError(writer http.ResponseWriter, request *http.Request) {
 	http.Redirect(writer, request, "/error/", http.StatusSeeOther)
+}
+
+//parses and executes the given page template
+func renderTemplate(writer http.ResponseWriter, templateName string, page *Page) {
+	pageTemplate,err := template.ParseFiles(templateName+".html")
+	if err != nil {
+		fmt.Println("There was an error loading the ", templateName," template - ", err)
+		return
+	}
+	pageTemplate.Execute(writer, page)
 }
