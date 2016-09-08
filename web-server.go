@@ -8,12 +8,15 @@ import (
 	"strings"
 )
 
+var pageTemplates *template.Template
+
 func main() {
 	page := Page{ "Home", []byte("The home page")}
 	page.Save()
 	pageFromFile, _ := loadPage("Home")
 	fmt.Println(string(pageFromFile.Body))
 
+	parseTemplates()
 	http.HandleFunc("/view/", viewHandler)
 	http.HandleFunc("/edit/", editHandler)
 	http.HandleFunc("/save/", saveHandler)
@@ -53,7 +56,7 @@ func viewHandler(writer http.ResponseWriter, request *http.Request) {
 	title := request.URL.Path[len("/view/"):] // the title is the remainder of the URL after /view/
 	page, err := loadPage(title)
 	if err != nil {
-		//fmt.Println("There was an error loading the page")
+		http.Error(writer, "The requested page does not exist", http.StatusInternalServerError)
 		return
 	}
 	renderTemplate(writer, "viewPageTemplate", page)
@@ -90,8 +93,11 @@ func saveHandler(writer http.ResponseWriter, request *http.Request) {
 	page.Title = strings.Join(request.Form["title"],"")
 	body := strings.Join(request.Form["body"],"")
 	page.Body = []byte(body)
-	page.Save()
-	
+	err= page.Save()
+	if err!= nil {
+		fmt.Println("Page not saved")
+		return
+	}
 	fmt.Println("file saved - ", page.Title)
 
 	//delete old file
@@ -110,10 +116,16 @@ func redirectToError(writer http.ResponseWriter, request *http.Request) {
 
 //parses and executes the given page template
 func renderTemplate(writer http.ResponseWriter, templateName string, page *Page) {
-	pageTemplate,err := template.ParseFiles(templateName+".html")
+	// pageTemplate,err := template.ParseFiles(templateName+".html")
+	err := pageTemplates.ExecuteTemplate(writer, templateName+".html", page)
 	if err != nil {
-		fmt.Println("There was an error loading the ", templateName," template - ", err)
+		fmt.Println("There was an error loading the page", err)
 		return
 	}
-	pageTemplate.Execute(writer, page)
+	// pageTemplate.Execute(writer, page)
+}
+
+//parse all templates
+func parseTemplates()  {
+	pageTemplates = template.Must(template.ParseFiles("editFormTemplate.html", "viewPageTemplate.html", "errorPageTemplate.html"))
 }
