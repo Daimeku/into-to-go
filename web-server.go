@@ -1,3 +1,5 @@
+//https://golang.org/doc/articles/wiki/
+//web server, mostly following the golang wiki
 package main
 
 import (
@@ -6,9 +8,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"regexp"
+	"errors"
 )
 
-var pageTemplates *template.Template
+var pageTemplates *template.Template 	//stores all the templates
+var validPath = regexp.MustCompile("^/(view|edit|save|error)/([a-zA-z0-9]+)$")
 
 func main() {
 	page := Page{ "Home", []byte("The home page")}
@@ -16,7 +21,7 @@ func main() {
 	pageFromFile, _ := loadPage("Home")
 	fmt.Println(string(pageFromFile.Body))
 
-	parseTemplates()
+	parseTemplates()	//get the templates ready
 	http.HandleFunc("/view/", viewHandler)
 	http.HandleFunc("/edit/", editHandler)
 	http.HandleFunc("/save/", saveHandler)
@@ -53,7 +58,8 @@ func loadPage(name string) (*Page, error) {
 
 //handles all routes with /view/- loads the data from the appropriate txt file and displays it as HTML
 func viewHandler(writer http.ResponseWriter, request *http.Request) {
-	title := request.URL.Path[len("/view/"):] // the title is the remainder of the URL after /view/
+	// title := request.URL.Path[len("/view/"):] // the title is the remainder of the URL after /view/
+	title, err := getPageTitle(request)
 	page, err := loadPage(title)
 	if err != nil {
 		http.Error(writer, "The requested page does not exist", http.StatusInternalServerError)
@@ -128,4 +134,12 @@ func renderTemplate(writer http.ResponseWriter, templateName string, page *Page)
 //parse all templates
 func parseTemplates()  {
 	pageTemplates = template.Must(template.ParseFiles("editFormTemplate.html", "viewPageTemplate.html", "errorPageTemplate.html"))
+}
+
+func getPageTitle(request *http.Request) (string, error) {
+	pageTitle := validPath.FindStringSubmatch(request.URL.Path)
+	if pageTitle == nil {
+		return "", errors.New("Invalid page requested")
+	}
+	return pageTitle[2], nil
 }
