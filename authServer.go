@@ -25,8 +25,19 @@ func main() {
 	mysqlStore := mysql.New(db, "osin_")
 	mysqlStore.CreateSchemas()
 
+	//create an auth server conf and configure it
+	serverConf := osin.NewServerConfig()
+	serverConf.AllowClientSecretInParams = true //ensure this is set, unless using HTTP basic auth for client secret
+	serverConf.AllowedAuthorizeTypes = osin.AllowedAuthorizeType{osin.CODE, osin.TOKEN}
+	serverConf.AllowedAccessTypes = osin.AllowedAccessType{osin.AUTHORIZATION_CODE}
+	serverConf.AllowGetAccessRequest = true
+
 	//create a new osin server
-	authServer := osin.NewServer(osin.NewServerConfig(), mysqlStore)
+	authServer := osin.NewServer(serverConf, mysqlStore)
+
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Fprint(writer, "the home page")
+	})
 
 	//handle the authorize route
 	http.HandleFunc("/authorize", func(writer http.ResponseWriter, request *http.Request) {
@@ -41,8 +52,35 @@ func main() {
 			authRequest.Authorized = true
 			authServer.FinishAuthorizeRequest(response, request, authRequest)
 		}
+
+		//check for and log response errors
+		if response.IsError {
+			fmt.Println("there was an error - ", response.InternalError)
+		}
 		osin.OutputJSON(response, writer, request)
 	})
 
+	//handle the token route
+	//once the authorization grant is received, send it here and get your token
+	http.HandleFunc("/token", func(writer http.ResponseWriter, request *http.Request) {
+		response := authServer.NewResponse()
+		defer response.Close()
+
+		//handle the access request
+		accessRequest := authServer.HandleAccessRequest(response, request)
+		if accessRequest != nil {
+			accessRequest.Authorized = true //authorize the client
+			authServer.FinishAccessRequest(response, request, accessRequest)
+		}
+
+		//check for and log response errors
+		if response.IsError {
+			fmt.Println("there was an error - ", response.InternalError)
+		}
+		//render the repsonse
+		osin.OutputJSON(response, writer, request)
+	})
+
+	//start the server
 	http.ListenAndServe(":8888", nil)
 }
