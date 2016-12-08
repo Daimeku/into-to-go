@@ -10,7 +10,7 @@ import (
 
 const (
 	Driver           = "mysql"
-	ConnectionString = "root:@tcp(localhost:3306)/mydb"
+	ConnectionString = "root:@tcp(localhost:3306)/mydb?parseTime=true"
 )
 
 func main() {
@@ -27,10 +27,11 @@ func main() {
 
 	//create an auth server conf and configure it
 	serverConf := osin.NewServerConfig()
-	serverConf.AllowClientSecretInParams = true //ensure this is set, unless using HTTP basic auth for client secret
-	serverConf.AllowedAuthorizeTypes = osin.AllowedAuthorizeType{osin.CODE, osin.TOKEN}
-	serverConf.AllowedAccessTypes = osin.AllowedAccessType{osin.AUTHORIZATION_CODE}
-	serverConf.AllowGetAccessRequest = true
+	// serverConf.AllowedAuthorizeTypes = osin.AllowedAuthorizeType{osin.CODE, osin.TOKEN}
+	// serverConf.AllowedAccessTypes = osin.AllowedAccessType{osin.AUTHORIZATION_CODE,
+	// 	osin.REFRESH_TOKEN, osin.PASSWORD, osin.CLIENT_CREDENTIALS, osin.ASSERTION}
+	// serverConf.AllowGetAccessRequest = true
+	// serverConf.AllowClientSecretInParams = true //ensure this is set, unless using HTTP basic auth for client secret
 
 	//create a new osin server
 	authServer := osin.NewServer(serverConf, mysqlStore)
